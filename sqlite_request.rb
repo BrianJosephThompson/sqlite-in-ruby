@@ -33,7 +33,18 @@ class MySqliteRequest
         self
     end
     
-    def join(column_on_db_a, filename_db_b, column_on_db_b)
+    def join(col_a, file_b, col_b)
+        result = []
+        CSV.parse(File.read(@table_name), headers: true).collect do |row|
+            result << row
+        end
+    
+        CSV.parse(File.read(file_b), headers: true).collect do |row|
+            entry = result.select { |entry| entry[col_a] == row[col_a] }.first
+            entry[col_b] = row[col_b]
+        end
+
+        p result
         self
     end
     
