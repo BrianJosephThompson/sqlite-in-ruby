@@ -40,9 +40,9 @@ class MySqliteRequest
     def order(order, column_name)
         @order = order
         if (@order == :asc)
-            _sort_asc(column_name)
+            p _sort_order(column_name)
         elsif (@order == :desc)
-            _sort_desc(column_name)
+            p _sort_order(column_name).reverse!
         end
         self
     end
@@ -134,15 +134,12 @@ class MySqliteRequest
         end
     end
 
-    def _sort_asc(column_name)
-        CSV.open(@table_name, headers: true).each do |row|
-            row.sort_by { |col| col[column_name] }
+    def _sort_order(column_name)
+        result = []
+        CSV.parse(File.read(@table_name), headers: true).collect do |row|
+            result << row.to_hash.slice(column_name)
         end
-    end
-
-    def _sort_desc(column_name)
-        my_csv = CSV.read(@table_name, headers: true)
-        my_csv.sort_by! { |x, y| y[column_name] <=> x[column_name] }
+        result.sort_by! {|key| key[column_name] }
     end
 
 
