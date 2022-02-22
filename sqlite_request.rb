@@ -1,23 +1,25 @@
+
 require 'csv'
 
 class MySqliteRequest
 
-    
     def initialize
         @type_of_request    = :none
         @select_columns     = []
-        @where_params       = []
+        @where_column       = nil
+        @where_value        = nil
         @insert_attributes  = {}
+        @update_attributes  = {}
         @table_name         = nil
         @order              = :asc
         
     end
-    
+
     def from(table_name)
         @table_name = table_name
         self
     end
-    
+
     def select(column_name)
         if (column_name.is_a?(Array))
             @select_columns += column_name.collect { |var| var.to_s }
@@ -27,12 +29,13 @@ class MySqliteRequest
         self._setTypeOfRequest(:select)
         self
     end
-    
+
     def where(column_name, criteria)
-        @where_params << [column_name, criteria]
+        @where_column   = column_name
+        @where_value    = criteria
         self
     end
-    
+
     def join(col_a, file_b, col_b)
         result = []
         CSV.parse(File.read(@table_name), headers: true).collect do |row|
@@ -47,7 +50,7 @@ class MySqliteRequest
         p result
         self
     end
-    
+
     def order(order, column_name)
         @order = order
         if (@order == :asc)
@@ -57,32 +60,37 @@ class MySqliteRequest
         end
         self
     end
-    
+
     def insert(table_name)
         @table_name = table_name
         self._setTypeOfRequest(:insert)
         self
     end
-    
+
     def values(data)
         if (@type_of_request == :insert)
             @insert_attributes = data
         else
-            raise 'Wrong type of request to call values()'
+            raise "VALUES corresponds with INSERT Query"
         end
-        self
+    self
     end
-    
+
     def update(table_name)
         @table_name = table_name
         self._setTypeOfRequest(:update)
         self
     end
-    
-    def set(data)
-        self
+
+    def set(data) 
+        if (@type_of_request == :update)
+            @update_attributes = data
+        else
+            raise "SET corresponds with UPDATE Query"
+        end
+    self
     end
-    
+
     def delete
         self._setTypeOfRequest(:delete)
         self
@@ -94,28 +102,41 @@ class MySqliteRequest
             _run_select
         elsif (@type_of_request == :insert)
             _run_insert
+        elsif (@type_of_request == :update)
+            _run_update
         end
 
     end
 
     def print_select_type
-        puts "Select Attributes #{@select_columns}"
-        puts "Where Attributes #{@where_params}"
+        puts "SELECT #{@select_columns}"
+        puts "FROM #{@table_name}"
+        if (@where_params)
+            puts "WHERE #{@where_column} = #{@where_value}"
+        end
     end
 
     def print_insert_type
-        puts "Insert Attributes #{@insert_attributes}"
+        puts "INSERT #{@insert_attributes}"
+    end
+
+    def print_update_type
+        puts "UPDATE #{@table_name}"
+        puts "SET #{@update_attributes}"
+        if (@where_column)
+            puts "WHERE #{@where_column} = #{@where_value}"
+        end
     end
 
 
     def print
         puts "type of request #{@type_of_request}"
-        puts "Table Name #{@table_name}"
-        if (@type_of_request == :select)
+        if      (@type_of_request == :select)
             print_select_type
-        elsif
-            (@type_of_request == :insert)
+        elsif   (@type_of_request == :insert)
             print_insert_type
+        elsif   (@type_of_request == :update)
+            print_update_type
         end
     end
 
@@ -129,11 +150,10 @@ class MySqliteRequest
 
     def _run_select
         result = []
-        CSV.parse(File.read(@table_name), headers: true).each do |row|
-            @where_params.each do |where_attribute|
-                if row[where_attribute[0]] == where_attribute[1]
+        csv = CSV.parse(File.read(@table_name), headers: true)
+        csv.each do |row|
+            if row[@where_column] == @where_value
                     result << row.to_hash.slice(*@select_columns)
-                end
             end
         end
         result
@@ -145,6 +165,31 @@ class MySqliteRequest
         end
     end
 
+    def _run_update        
+        csv = CSV.read(@table_name, headers: true)
+        csv.each do |row|
+            if row[@where_column] == @where_value
+                @update_attributes.each do |key, value|
+                row[key] = value
+                end
+            end
+        end
+        _update_file(csv)
+    end
+
+    def _update_file(csv)
+        File.open(@table_name, 'w+') do |file|
+            index = 0
+            csv.each do |row|
+                if index == 0
+                    file << csv.headers.join(',') + "\n"
+                end
+                file << row
+                index += 1
+            end
+        end
+    end
+
     def _sort_order(column_name)
         result = []
         CSV.parse(File.read(@table_name), headers: true).collect do |row|
@@ -152,6 +197,8 @@ class MySqliteRequest
         end
         result.sort_by! {|key| key[column_name] }
     end
+    
+
 
 
 
@@ -170,12 +217,18 @@ def _main()
     request = request.insert('nba_player_data_light.csv')
     request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
     request.run
-=end
 
     request = MySqliteRequest.new
     request = request.from('nba_player_data_light.csv')
-    request = request.order(:asc, 'year_start')
+    request = request.order(:desc, 'year_start')
+    REVISIT ME
+=end
 
+    request = MySqliteRequest.new
+    request = request.update('nba_player_data_light.csv')
+    request = request.set('name' => 'Alaa Renamed')
+    request = request.where('name', 'Alaa Abdelnaby')
+    request.run
 end
 
 _main
