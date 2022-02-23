@@ -98,14 +98,29 @@ class MySqliteRequest
 
     def run
         print
-        if (@type_of_request == :select)
+        if      (@type_of_request == :select)
             _run_select
-        elsif (@type_of_request == :insert)
+        elsif   (@type_of_request == :insert)
             _run_insert
-        elsif (@type_of_request == :update)
+        elsif   (@type_of_request == :update)
             _run_update
+        elsif   (@type_of_request == :delete)
+            _run_delete
         end
 
+    end
+
+    def print
+        puts "type of request #{@type_of_request}"
+        if      (@type_of_request == :select)
+            print_select_type
+        elsif   (@type_of_request == :insert)
+            print_insert_type
+        elsif   (@type_of_request == :update)
+            print_update_type
+        elsif   (@type_of_request == :delete)
+            print_delete_type
+        end
     end
 
     def print_select_type
@@ -117,6 +132,7 @@ class MySqliteRequest
     end
 
     def print_insert_type
+        puts "INSERT INTO #{@table_name}"
         puts "INSERT #{@insert_attributes}"
     end
 
@@ -128,17 +144,13 @@ class MySqliteRequest
         end
     end
 
-
-    def print
-        puts "type of request #{@type_of_request}"
-        if      (@type_of_request == :select)
-            print_select_type
-        elsif   (@type_of_request == :insert)
-            print_insert_type
-        elsif   (@type_of_request == :update)
-            print_update_type
+    def print_delete_type
+        puts "DELETE FROM #{@table_name}"
+        if (@where_column)
+            puts "WHERE #{@where_column} = #{@where_value}"
         end
     end
+    
 
     def _setTypeOfRequest(new_type)
         if (@type_of_request == :none or @type_of_request == new_type)
@@ -190,6 +202,14 @@ class MySqliteRequest
         end
     end
 
+    def _run_delete
+        csv = CSV.read(@table_name, headers: true)
+        csv.delete_if do |row|
+            row[@where_column] == @where_value
+        end
+        _update_file(csv)
+    end
+
     def _sort_order(column_name)
         result = []
         CSV.parse(File.read(@table_name), headers: true).collect do |row|
@@ -222,13 +242,20 @@ def _main()
     request = request.from('nba_player_data_light.csv')
     request = request.order(:desc, 'year_start')
     REVISIT ME
-=end
 
     request = MySqliteRequest.new
     request = request.update('nba_player_data_light.csv')
     request = request.set('name' => 'Alaa Renamed')
     request = request.where('name', 'Alaa Abdelnaby')
     request.run
+=end
+
+    request = MySqliteRequest.new
+    request = request.delete()
+    request = request.from('nba_player_data_light.csv')
+    request = request.where('name', 'Alaa Abdelnaby')
+    request.run
+
 end
 
 _main
