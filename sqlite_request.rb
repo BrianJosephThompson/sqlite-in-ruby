@@ -12,6 +12,8 @@ class MySqliteRequest
         @update_attributes  = {}
         @table_name         = nil
         @order              = :asc
+        @order_flag         = 0
+        @order_column       = nil
         
     end
 
@@ -52,12 +54,13 @@ class MySqliteRequest
     end
 
     def order(order, column_name)
+        @order_column = column_name
         @order = order
-        if (@order == :asc)
-            p _sort_order(column_name)
-        elsif (@order == :desc)
-            p _sort_order(column_name).reverse!
-        end
+        # if (@order == :asc)
+        #     p _sort_order(column_name)
+        # elsif (@order == :desc)
+        #     p _sort_order(column_name).reverse!
+        # end
         self
     end
 
@@ -126,8 +129,15 @@ class MySqliteRequest
     def print_select_type
         puts "SELECT #{@select_columns}"
         puts "FROM #{@table_name}"
-        if (@where_params)
+        if (@where_column)
             puts "WHERE #{@where_column} = #{@where_value}"
+        end
+        if (@order_column)
+            if (@order == :desc)
+                puts "ORDER BY #{@order_column} DESC"
+            else
+                puts "ORDER BY #{@order_column} ASC"
+            end
         end
     end
 
@@ -168,6 +178,7 @@ class MySqliteRequest
                     result << row.to_hash.slice(*@select_columns)
             end
         end
+        order_check(result)
         result
     end
 
@@ -210,12 +221,14 @@ class MySqliteRequest
         _update_file(csv)
     end
 
-    def _sort_order(column_name)
-        result = []
-        CSV.parse(File.read(@table_name), headers: true).collect do |row|
-            result << row.to_hash.slice(column_name)
+    def order_check(result)
+        p @order_column
+        if (@order == :asc and @order_column)
+            result = result.sort_by! { |key| key[@order_column].to_s }
+        elsif (@order == :desc and @order_column)
+            result.sort_by! { |key| key[@order_column].to_s }.reverse!
         end
-        result.sort_by! {|key| key[column_name] }
+        return result        
     end
     
 
@@ -232,29 +245,35 @@ def _main()
     request = request.select('name')
     request = request.where('year_start', '1991')
     p request.run
-
+        ^^ Success
     request = MySqliteRequest.new
     request = request.insert('nba_player_data_light.csv')
     request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
     request.run
-
+        ^^ Success
     request = MySqliteRequest.new
-    request = request.from('nba_player_data_light.csv')
-    request = request.order(:desc, 'year_start')
-    REVISIT ME
-
+    request = request.from('nba_player_data.csv')
+    request = request.select('college')
+    request = request.where('year_start', '1991')
+    request = request.order(:desc, 'college')
+    p request.run
+        ^^ Success
     request = MySqliteRequest.new
     request = request.update('nba_player_data_light.csv')
     request = request.set('name' => 'Alaa Renamed')
     request = request.where('name', 'Alaa Abdelnaby')
     request.run
-=end
-
+        ^^ Success
     request = MySqliteRequest.new
     request = request.delete()
     request = request.from('nba_player_data_light.csv')
     request = request.where('name', 'Alaa Abdelnaby')
     request.run
+        ^^ Success
+=end
+
+
+
 
 end
 
