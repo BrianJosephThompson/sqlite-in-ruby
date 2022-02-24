@@ -6,9 +6,11 @@ class MySqliteRequest
     def initialize
         @type_of_request    = :none
         @select_columns     = []
-        @where_column       = nil
+        @where_key          = nil
+        @where_key_2        = nil
         @where_value        = nil
-        @insert_attributes  = {}
+        @where_value_2      = nil
+        @insert_values  = {}
         @update_attributes  = {}
         @table_name         = nil
         @order              = :asc
@@ -33,8 +35,13 @@ class MySqliteRequest
     end
 
     def where(column_name, criteria)
-        @where_column   = column_name
-        @where_value    = criteria
+        if @where_key.nil?
+            @where_key      = column_name
+            @where_value    = criteria
+        elsif @where_key_2.nil?
+            @where_key_2      = column_name
+            @where_value_2    = criteria
+        end
         self
     end
 
@@ -56,11 +63,6 @@ class MySqliteRequest
     def order(order, column_name)
         @order_column = column_name
         @order = order
-        # if (@order == :asc)
-        #     p _sort_order(column_name)
-        # elsif (@order == :desc)
-        #     p _sort_order(column_name).reverse!
-        # end
         self
     end
 
@@ -72,7 +74,7 @@ class MySqliteRequest
 
     def values(data)
         if (@type_of_request == :insert)
-            @insert_attributes = data
+            @insert_values = data
         else
             raise "VALUES corresponds with INSERT Query"
         end
@@ -129,8 +131,11 @@ class MySqliteRequest
     def print_select_type
         puts "SELECT #{@select_columns}"
         puts "FROM #{@table_name}"
-        if (@where_column)
-            puts "WHERE #{@where_column} = #{@where_value}"
+        if (@where_key)
+            puts "WHERE #{@where_key} = #{@where_value}"
+        end
+        if (@where_key_2)
+            puts "WHERE #{@where_key_2} = #{@where_value_2}"
         end
         if (@order_column)
             if (@order == :desc)
@@ -143,21 +148,21 @@ class MySqliteRequest
 
     def print_insert_type
         puts "INSERT INTO #{@table_name}"
-        puts "INSERT #{@insert_attributes}"
+        puts "INSERT #{@insert_values}"
     end
 
     def print_update_type
         puts "UPDATE #{@table_name}"
         puts "SET #{@update_attributes}"
-        if (@where_column)
-            puts "WHERE #{@where_column} = #{@where_value}"
+        if (@where_key)
+            puts "WHERE #{@where_key} = #{@where_value}"
         end
     end
 
     def print_delete_type
         puts "DELETE FROM #{@table_name}"
-        if (@where_column)
-            puts "WHERE #{@where_column} = #{@where_value}"
+        if (@where_key)
+            puts "WHERE #{@where_key} = #{@where_value}"
         end
     end
     
@@ -174,24 +179,30 @@ class MySqliteRequest
         result = []
         csv = CSV.parse(File.read(@table_name), headers: true)
         csv.each do |row|
-            if row[@where_column] == @where_value
+            if @where_key_2.nil?
+                if row[@where_key] == @where_value
                     result << row.to_hash.slice(*@select_columns)
+                end
+            elsif row[@where_key] == @where_value and row[@where_key_2] == @where_value_2
+                    result << row.to_hash.slice(*@select_columns)
+            elsif !@where_key and !@where_value
+                result << row.to_hash.slice(*@select_columns)
             end
         end
         order_check(result)
-        result
+        p result
     end
 
     def _run_insert
         File.open(@table_name, 'a') do |f|
-            f.puts @insert_attributes.values.join(',')
+            f.puts @insert_values.values.join(',')
         end
     end
 
     def _run_update        
         csv = CSV.read(@table_name, headers: true)
         csv.each do |row|
-            if row[@where_column] == @where_value
+            if row[@where_key] == @where_value
                 @update_attributes.each do |key, value|
                 row[key] = value
                 end
@@ -216,13 +227,12 @@ class MySqliteRequest
     def _run_delete
         csv = CSV.read(@table_name, headers: true)
         csv.delete_if do |row|
-            row[@where_column] == @where_value
+            row[@where_key] == @where_value
         end
         _update_file(csv)
     end
 
     def order_check(result)
-        p @order_column
         if (@order == :asc and @order_column)
             result = result.sort_by! { |key| key[@order_column].to_s }
         elsif (@order == :desc and @order_column)
@@ -240,30 +250,54 @@ end
 
 def _main()
 =begin
+    #TEST CASE 1 - MYSQLITEREQUEST CLASS - SIMPLE SELECT
     request = MySqliteRequest.new
     request = request.from('nba_player_data.csv')
     request = request.select('name')
-    request = request.where('year_start', '1991')
-    p request.run
-        ^^ Success
-    request = MySqliteRequest.new
-    request = request.insert('nba_player_data_light.csv')
-    request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
     request.run
         ^^ Success
+
+    #TEST CASE 2 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + WHERE
+    request = MySqliteRequest.new
+    request = request.from('nba_player_data.csv')
+    request = request.select('name')
+    request = request.where('college', 'University of California')
+    request.run
+        ^^ Success
+
+    #TEST CASE 3 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + MULTIPLE WHERE
+    request = MySqliteRequest.new
+    request = request.from('nba_player_data.csv')
+    request = request.select('name')
+    request = request.where('college', 'University of California')
+    request = request.where('year_start', '1997')
+    request.run
+
+    #TEST CASE 4 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + WHERE + ORDER
     request = MySqliteRequest.new
     request = request.from('nba_player_data.csv')
     request = request.select('college')
     request = request.where('year_start', '1991')
     request = request.order(:desc, 'college')
-    p request.run
+    request.run
         ^^ Success
+
+    #TEST CASE 5 - MYSQLITEREQUEST CLASS - SIMPLE INSERT
+    request = MySqliteRequest.new
+    request = request.insert('nba_player_data_light.csv')
+    request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
+    request.run
+        ^^ Success
+
+    #TEST CASE 6 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + SET
     request = MySqliteRequest.new
     request = request.update('nba_player_data_light.csv')
     request = request.set('name' => 'Alaa Renamed')
     request = request.where('name', 'Alaa Abdelnaby')
     request.run
         ^^ Success
+
+    #TEST CASE 7 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
     request = MySqliteRequest.new
     request = request.delete()
     request = request.from('nba_player_data_light.csv')
@@ -271,8 +305,6 @@ def _main()
     request.run
         ^^ Success
 =end
-
-
 
 
 end
