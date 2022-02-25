@@ -10,12 +10,14 @@ class MySqliteRequest
         @where_key_2        = nil
         @where_value        = nil
         @where_value_2      = nil
-        @insert_values  = {}
+        @insert_values      = {}
         @update_attributes  = {}
         @table_name         = nil
         @order              = :asc
-        @order_flag         = 0
         @order_column       = nil
+        @join_column_db_a   = nil
+        @join_column_db_b   = nil
+        @second_table_name  = nil
         
     end
 
@@ -46,17 +48,20 @@ class MySqliteRequest
     end
 
     def join(col_a, file_b, col_b)
-        result = []
-        CSV.parse(File.read(@table_name), headers: true).collect do |row|
-            result << row
-        end
+        @join_column_db_a   = col_a
+        @join_column_db_b   = col_b
+        @second_table_name  = file_b
+        # result = []
+        # CSV.parse(File.read(@table_name), headers: true).collect do |row|
+        #     result << row
+        # end
     
-        CSV.parse(File.read(file_b), headers: true).collect do |row|
-            entry = result.select { |entry| entry[col_a] == row[col_a] }.first
-            entry[col_b] = row[col_b]
-        end
+        # CSV.parse(File.read(file_b), headers: true).collect do |row|
+        #     entry = result.select { |entry| entry[col_a] == row[col_a] }.first
+        #     entry[col_b] = row[col_b]
+        # end
 
-        p result
+        # p result
         self
     end
 
@@ -116,7 +121,6 @@ class MySqliteRequest
     end
 
     def print
-        puts "type of request #{@type_of_request}"
         if      (@type_of_request == :select)
             print_select_type
         elsif   (@type_of_request == :insert)
@@ -136,6 +140,9 @@ class MySqliteRequest
         end
         if (@where_key_2)
             puts "WHERE #{@where_key_2} = #{@where_value_2}"
+        end
+        if (@join_column_db_a and @join_column_db_b and @second_table_name)
+            puts "JOIN #{@second_table_name} ON #{@table_name}.#{@join_column_db_a}=#{@second_table_name}.#{@join_column_db_b}"
         end
         if (@order_column)
             if (@order == :desc)
@@ -179,19 +186,38 @@ class MySqliteRequest
         result = []
         csv = CSV.parse(File.read(@table_name), headers: true)
         csv.each do |row|
-            if @where_key_2.nil?
+            if @select_columns[0] == '*'
+                result << row.to_hash
+            elsif @where_key_2.nil? and @where_key
                 if row[@where_key] == @where_value
                     result << row.to_hash.slice(*@select_columns)
                 end
-            elsif row[@where_key] == @where_value and row[@where_key_2] == @where_value_2
+            elsif @where_key and @where_key_2 and @where_value and @where_value_2
+                if row[@where_key] == @where_value and row[@where_key_2] == @where_value_2
                     result << row.to_hash.slice(*@select_columns)
-            elsif !@where_key and !@where_value
+                end
+            elsif !@where_key and !@where_value and !@join_column_db_a
                 result << row.to_hash.slice(*@select_columns)
+            elsif @join_column_db_a and @join_column_db_b and @second_table_name
+                result << row.to_hash
             end
         end
+        _run_join(result)
         order_check(result)
         p result
     end
+
+    def _run_join(result)
+        if @join_column_db_a and @join_column_db_b and @second_table_name
+        
+            CSV.parse(File.read(@second_table_name), headers: true).collect do |row|
+                entry = result.select { |entry| entry[@join_column_db_a] == row[@join_column_db_a] }.first
+                entry[@join_column_db_b] = row[@join_column_db_b]
+            end
+        end
+        result
+    end
+
 
     def _run_insert
         File.open(@table_name, 'a') do |f|
@@ -234,11 +260,11 @@ class MySqliteRequest
 
     def order_check(result)
         if (@order == :asc and @order_column)
-            result = result.sort_by! { |key| key[@order_column].to_s }
+            result.sort_by! { |key| key[@order_column].to_s }
         elsif (@order == :desc and @order_column)
             result.sort_by! { |key| key[@order_column].to_s }.reverse!
         end
-        return result        
+        result        
     end
     
 
@@ -282,14 +308,29 @@ def _main()
     request.run
         ^^ Success
 
-    #TEST CASE 5 - MYSQLITEREQUEST CLASS - SIMPLE INSERT
+    #TEST CASE 5 - MYSQLITEREQUEST CLASS - SELECT * FROM
+    request = MySqliteRequest.new
+    request = request.from('nba_player_data_light.csv')
+    request = request.select('*')
+    request.run
+        ^^ Success
+
+    #TEST CASE 6 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + JOIN
+    request = MySqliteRequest.new
+    request = request.from('nba_player_data_light.csv')
+    request = request.select('name')
+    request = request.join('name', 'nba_data.csv', 'middle_name')
+    request.run
+        ^^ Success
+
+    #TEST CASE 7 - MYSQLITEREQUEST CLASS - SIMPLE INSERT
     request = MySqliteRequest.new
     request = request.insert('nba_player_data_light.csv')
     request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
     request.run
         ^^ Success
 
-    #TEST CASE 6 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + SET
+    #TEST CASE 8 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + SET
     request = MySqliteRequest.new
     request = request.update('nba_player_data_light.csv')
     request = request.set('name' => 'Alaa Renamed')
@@ -297,7 +338,7 @@ def _main()
     request.run
         ^^ Success
 
-    #TEST CASE 7 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
+    #TEST CASE 9 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
     request = MySqliteRequest.new
     request = request.delete()
     request = request.from('nba_player_data_light.csv')
@@ -305,6 +346,7 @@ def _main()
     request.run
         ^^ Success
 =end
+
 
 
 end
