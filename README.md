@@ -30,8 +30,6 @@ The below methods will be contained within the MySqliteRequest class.
 
 ## Getting Started
 
-Please use the command line entry below to import the NBA Player Data csv for testing.
 
-    `wget https://storage.googleapis.com/qwasar-public/nba_player_data.csv`
 
 
