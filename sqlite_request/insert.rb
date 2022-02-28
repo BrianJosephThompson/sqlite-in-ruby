@@ -1,8 +1,8 @@
 module Insert
 
     def insert(table_name)
+        set_table_name(table_name)
         @type_of_request = :insert
-        @table_name = table_name
         self
     end
 

@@ -29,10 +29,21 @@ class MySqliteRequest
     def restart
         initialize
     end
+
+    def set_table_name(table)
+        if table == 'nba_player_data.csv' or table == './csv_files/nba_player_data.csv'
+            @table_name = './csv_files/nba_player_data.csv'
+        elsif table == 'students.csv' or table == './csv_files/students.csv'
+            @table_name = './csv_files/students.csv'
+        elsif table == 'nba_player_data_light.csv' or table == './csv_files/nba_player_data_light.csv'
+            @table_name = './csv_files/nba_player_data_light.csv'
+        end
+    end
+
     
 
     def from(table_name)
-        @table_name = table_name
+        set_table_name(table_name)
         self
     end
 
@@ -62,10 +73,25 @@ class MySqliteRequest
             run_delete
         end
     end
+
+    def run_without_print
+        if      (@type_of_request == :select)
+            run_select
+        elsif   (@type_of_request == :insert)
+            run_insert
+        elsif   (@type_of_request == :update)
+            run_update
+        elsif   (@type_of_request == :delete)
+            run_delete
+        end
+    end
 end
 
 def _main()
 =begin
+
+    TEST CASES MYSQLITEREQUEST CLASS
+
     #TEST CASE 1 - MYSQLITEREQUEST CLASS - SIMPLE SELECT
     request = MySqliteRequest.new
     request = request.from('nba_player_data.csv')
@@ -128,7 +154,16 @@ def _main()
     request.run
         ^^ Success
 
-    #TEST CASE 9 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
+    #TEST CASE 9 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + Multiple SET        
+    request = MySqliteRequest.new
+    request = request.update('nba_player_data_light.csv')
+    request = request.set('year_start' => 'Nineteen Ninety One')
+    request = request.set('year_end' => 'Nineteen Ninety Five')
+    request = request.where('name', 'Alaa Abdelnaby')
+    request.run
+            ^^ Success
+
+    #TEST CASE 10 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
     request = MySqliteRequest.new
     request = request.delete()
     request = request.from('nba_player_data_light.csv')
@@ -138,10 +173,13 @@ def _main()
 =end
 
 # request = MySqliteRequest.new
-# request = request.delete()
-# request = request.from('nba_player_data_light.csv')
-# request = request.where('name', 'Don Adams')
+# request = request.update('nba_player_data_light.csv')
+# request = request.set('year_start' => 'Nineteen Ninety One')
+# request = request.set('year_end' => 'Nineteen Ninety Five')
+# request = request.where('name', 'Alaa Abdelnaby')
 # request.run
+
+
 
 end
 

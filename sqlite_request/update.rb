@@ -1,17 +1,18 @@
 module Update
 
     def update(table_name)
-        @table_name = table_name
+        set_table_name(table_name)
         @type_of_request = :update
         self
     end
 
     def set(data) 
         if (@type_of_request == :update)
-            @update_attributes = data
+            data.each { |k, v| @update_attributes[k] = v }
         else
             raise "SET corresponds with UPDATE Query"
         end
+
     self
     end
     
