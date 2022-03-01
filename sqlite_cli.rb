@@ -2,28 +2,6 @@ Dir["./sqlite_cli/*.rb"].each {|file| require file }
 require "readline"
 require_relative 'my_sqlite_request.rb'
 
-=begin
-Valid List of Commands to be Passed to Parser
-SELECT|INSERT|UPDATE|DELETE
-FROM
-WHERE (max 1 condition)
-JOIN ON (max 1 condition) Note, you can have multiple WHERE. Yes, you should save and load the database from a file. :-)
-
-    1. Select
-        Pass Array and SQLiteRequest to select_cli
-
-    2. Insert
-
-    3. Update
-
-    4. Delete
-        Pass Array and SQLiteRequest to delete_cli
-
-
-
-=end
-
-
 class MySqliteCli
 
     include Select_CLI
@@ -39,6 +17,9 @@ class MySqliteCli
         @insert_commands        = ["INSERT", "INTO", "VALUES"]
         @update_commands        = ["UPDATE", "SET", "WHERE"]
         @delete_commands        = ["DELETE", "FROM", "WHERE"]
+        @insert_hash            = {}
+        @insert_vals            = nil
+        @insert_index           = 0
         @where_col              = nil
         @where_col_2            = nil
         @where_criteria         = nil
@@ -96,113 +77,8 @@ class MySqliteCli
         end
     end
 
-    def run_insert_cli
-        index = 0
-        @input.collect! { |entry| entry = clean(entry) }
-        @input.each do |entry|
-            puts "#{index} - #{entry}"
-            index +=1
-        end
-    end
-
-    def run_update_cli
-        index = 0
-        @input.collect! { |entry| entry = clean(entry) }
-        @input.each do |entry|
-            puts "#{index} - #{entry}"
-            index +=1
-        end
-        validate_update
-        if (@run_signal == true)
-            @request.update(@csv)
-            @update_values.each do |k, v|
-                @request.set("#{k}" => "#{v}")
-            end
-            @request.where(@where_col, @where_criteria)
-            @request.run_without_print
-        end
-        reset
-    end
-
-    def validate_update
-        validate_csv(@input[1])
-        if (@input[2].upcase != 'SET')
-            puts "Table name must be followed by SET"
-        end
-        if (@valid_student_columns.include? @input[3]) == true or (@valid_nba_columns.include? @input[3]) == true and @input[4] == '='
-            validate_set(@input[1], @input[3], @input[5])
-        end
-        if (@valid_student_columns.include? @input[6]) == true or (@valid_nba_columns.include? @input[6]) == true and @input[7] == '='
-            validate_set(@input[1], @input[6], @input[8])
-        end
-        if (@input[6].upcase == 'WHERE' and @input[8] == '=')
-            validate_where(@input[1], @input[7])
-            @where_criteria = @input[9]
-            @run_signal = true
-        elsif (@input[6].upcase == 'WHERE' and @input[8] != '=')
-            puts "SET criteria = value must be followed by WHERE criteria = value"
-        end
-        if @input[10]
-            if (@input[9].upcase == 'WHERE' and @input[11] == '=')
-                validate_where(@input[1], @input[10])
-                @where_criteria = @input[12]
-                @run_signal = true
-            elsif (@input[9].upcase == 'WHERE' and @input[11] != '=')
-                puts "SET criteria = value must be followed by WHERE criteria = value"
-            end
-        end
-    end
 
 
-
-
-    def validate_set(table, key, value)
-        if table.downcase == 'students'
-            if (@valid_student_columns.include? key) == false
-                puts "Invalid Column Reference. Check spelling, if column exists"
-            else
-                @update_values[key] = value
-            end
-        elsif table.downcase == 'players'
-            if (@valid_nba_columns.include? key) == false
-                puts "Invalid Column Reference. Check spelling, if column exists"
-            else
-                @update_values[key] = value
-            end
-        end
-    end
-
-    def run_delete_cli
-        @input.collect! { |entry| entry = clean(entry) }
-        validate_delete
-        if @run_signal == true
-            @request.delete()
-            @request.from(@csv)
-            @request.where(@where_col, @where_criteria)
-            @request.run_without_print
-        end
-        reset
-    end
-
-    def validate_delete
-        if (@input[1].upcase != 'FROM')
-            puts "DELETE must be follwed by FROM"
-        end
-        validate_csv(@input[2])
-        if (@input[3].upcase != 'WHERE')
-            puts "Table Name must be followed by WHERE"
-        end
-        validate_where(@input[2], @input[4])
-        if (@input[5] != '=')
-            puts "WHERE reference must be followed by ="
-        end
-        if !@input[6]
-            puts "WHERE = must be followed by criteria"
-        else
-            @where_criteria = @input[6]
-            @run_signal = true
-        end
-    end
 
     def validate_csv(input)
         if input.downcase == 'students' 
@@ -249,7 +125,7 @@ cli.scan_cli
         ^^ Success
 
     TEST CASE # 4 - INSERT INTO students VALUES (John,john@johndoe.com,A,https://blog.johndoe.com)
-
+        ^^ Success
     
     TEST CASE # 5 - SELECT * FROM students
 
