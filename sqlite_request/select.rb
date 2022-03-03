@@ -19,7 +19,8 @@ module Select
     def join(col_a, file_b, col_b)
         @join_column_db_a   = col_a
         @join_column_db_b   = col_b
-        @second_table_name  = file_b
+        set_table_name(file_b)
+        !@second_table_name and raise "Invalid file name for second database. Please confirm the file name is correct and is not the same as the first database name"
         self
     end
 
@@ -45,28 +46,27 @@ module Select
     end
 
     def run_select
-        result = []
         csv = CSV.parse(File.read(@table_name), headers: true)
         csv.each do |row|
             if @select_columns[0] == '*'
-                result << row.to_hash
+                @select_result << row.to_hash
             elsif @where_key_2.nil? and @where_key
                 if row[@where_key] == @where_value
-                    result << row.to_hash.slice(*@select_columns)
+                    @select_result << row.to_hash.slice(*@select_columns)
                 end
             elsif @where_key and @where_key_2 and @where_value and @where_value_2
                 if row[@where_key] == @where_value and row[@where_key_2] == @where_value_2
-                    result << row.to_hash.slice(*@select_columns)
+                    @select_result << row.to_hash.slice(*@select_columns)
                 end
             elsif !@where_key and !@where_value and !@join_column_db_a
-                result << row.to_hash.slice(*@select_columns)
+                @select_result << row.to_hash.slice(*@select_columns)
             elsif @join_column_db_a and @join_column_db_b and @second_table_name
-                result << row.to_hash
+                @select_result << row.to_hash.slice(*@select_columns)
             end
         end
-        run_join(result)
-        order_check(result)
-        p result
+        run_join(@select_result)
+        order_check(@select_result)
+        @select_result
     end
 
     def run_join(result)
@@ -77,7 +77,7 @@ module Select
                 entry[@join_column_db_b] = row[@join_column_db_b]
             end
         end
-        result
+        @select_result = result
     end
 
     def order_check(result)
@@ -86,7 +86,7 @@ module Select
         elsif (@order == :desc and @order_column)
             result.sort_by! { |key| key[@order_column].to_s }.reverse!
         end
-        result        
+        @select_result = result       
     end
     
 end

@@ -23,24 +23,9 @@ class MySqliteRequest
         @join_column_db_a   = nil
         @join_column_db_b   = nil
         @second_table_name  = nil
+        @select_result      = []
         
     end
-
-    def restart
-        initialize
-    end
-
-    def set_table_name(table)
-        if table == 'nba_player_data.csv' or table == './csv_files/nba_player_data.csv'
-            @table_name = './csv_files/nba_player_data.csv'
-        elsif table == 'students.csv' or table == './csv_files/students.csv'
-            @table_name = './csv_files/students.csv'
-        elsif table == 'nba_player_data_light.csv' or table == './csv_files/nba_player_data_light.csv'
-            @table_name = './csv_files/nba_player_data_light.csv'
-        end
-    end
-
-    
 
     def from(table_name)
         set_table_name(table_name)
@@ -62,6 +47,7 @@ class MySqliteRequest
         if      (@type_of_request == :select)
             print_select
             run_select
+            p @select_result
         elsif   (@type_of_request == :insert)
             print_insert
             run_insert
@@ -85,102 +71,24 @@ class MySqliteRequest
             run_delete
         end
     end
-end
 
-def _main()
-=begin
-
-    TEST CASES MYSQLITEREQUEST CLASS
-
-    #TEST CASE 1 - MYSQLITEREQUEST CLASS - SIMPLE SELECT
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data.csv')
-    request = request.select('name')
-    request.run
-        ^^ Success
-
-    #TEST CASE 2 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + WHERE
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data.csv')
-    request = request.select('name')
-    request = request.where('college', 'University of California')
-    request.run
-        ^^ Success
-
-    #TEST CASE 3 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + MULTIPLE WHERE
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data.csv')
-    request = request.select('name')
-    request = request.where('college', 'University of California')
-    request = request.where('year_start', '1997')
-    request.run
-
-    #TEST CASE 4 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + WHERE + ORDER
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data.csv')
-    request = request.select('college')
-    request = request.where('year_start', '1991')
-    request = request.order(:desc, 'college')
-    request.run
-        ^^ Success
-
-    #TEST CASE 5 - MYSQLITEREQUEST CLASS - SELECT * FROM
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data_light.csv')
-    request = request.select('*')
-    request.run
-        ^^ Success
-
-    #TEST CASE 6 - MYSQLITEREQUEST CLASS - SIMPLE SELECT + JOIN
-    request = MySqliteRequest.new
-    request = request.from('nba_player_data_light.csv')
-    request = request.select('name')
-    request = request.join('name', 'nba_data.csv', 'middle_name')
-    request.run
-        ^^ Success
-
-    #TEST CASE 7 - MYSQLITEREQUEST CLASS - SIMPLE INSERT
-    request = MySqliteRequest.new
-    request = request.insert('nba_player_data_light.csv')
-    request = request.values({"name" => "Don Adams", "year_start" => "1971", "year_end" => "1977", "position" => "F", "height" =>"6-6", "weight"=>"210", "birth_date"=>"November 27, 1947", "college"=>"Northwestern University"})
-    request.run
-        ^^ Success
-
-    #TEST CASE 8 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + SET
-    request = MySqliteRequest.new
-    request = request.update('nba_player_data_light.csv')
-    request = request.set('name' => 'Alaa Renamed')
-    request = request.where('name', 'Alaa Abdelnaby')
-    request.run
-        ^^ Success
-
-    #TEST CASE 9 - MYSQLITEREQUEST CLASS - SIMPLE UPDATE + Multiple SET        
-    request = MySqliteRequest.new
-    request = request.update('nba_player_data_light.csv')
-    request = request.set('year_start' => 'Nineteen Ninety One')
-    request = request.set('year_end' => 'Nineteen Ninety Five')
-    request = request.where('name', 'Alaa Abdelnaby')
-    request.run
-            ^^ Success
-
-    #TEST CASE 10 - MYSQLITEREQUEST CLASS - SIMPLE DELETE + WHERE
-    request = MySqliteRequest.new
-    request = request.delete()
-    request = request.from('nba_player_data_light.csv')
-    request = request.where('name', 'Alaa Abdelnaby')
-    request.run
-        ^^ Success
-=end
-
-# request = MySqliteRequest.new
-# request = request.update('nba_player_data_light.csv')
-# request = request.set('year_start' => 'Nineteen Ninety One')
-# request = request.set('year_end' => 'Nineteen Ninety Five')
-# request = request.where('name', 'Alaa Abdelnaby')
-# request.run
-
-
+    def set_table_name(table)
+        if table == 'nba_player_data.csv' or table == './csv_files/nba_player_data.csv'
+            !@table_name and @table_name = './csv_files/nba_player_data.csv'
+            !@second_table_name and @table_name != './csv_files/nba_player_data.csv' and @second_table_name = './csv_files/nba_player_data.csv'
+        elsif table == 'nba_player_data_light.csv' or table == './csv_files/nba_player_data_light.csv'
+            !@table_name and @table_name = './csv_files/nba_player_data_light.csv'
+            !@second_table_name and @table_name != './csv_files/nba_player_data_light.csv' and @second_table_name = './csv_files/nba_player_data_light.csv'
+        elsif table == 'nba_player_data_light_extra_column.csv' or table == './csv_files/nba_player_data_light_extra_column.csv'
+            !@table_name and @table_name = './csv_files/nba_player_data_light_extra_column.csv'
+            !@second_table_name and @table_name != './csv_files/nba_player_data_light_extra_column.csv' and @second_table_name = './csv_files/nba_player_data_light_extra_column.csv'
+        elsif table == 'students.csv' or table == './csv_files/students.csv'
+            !@table_name and @table_name = './csv_files/students.csv'
+            !@second_table_name and @table_name != './csv_files/students.csv' and @second_table_name = './csv_files/students.csv'
+        elsif table == 'others.csv' or table == './csv_files/others.csv'
+            !@table_name and @table_name = './csv_files/others.csv'
+            !@second_table_name and @table_name != './csv_files/others.csv' and @second_table_name = './csv_files/others.csv'
+        end
+    end
 
 end
-
-_main

@@ -3,10 +3,6 @@ module Update_CLI
     def run_update_cli
         index = 0
         @input.collect! { |entry| entry = clean(entry) }
-        @input.each do |entry|
-            puts "#{index} - #{entry}"
-            index +=1
-        end
         validate_update
         if (@run_signal == true)
             @request.update(@csv)
@@ -23,6 +19,7 @@ module Update_CLI
         validate_csv(@input[1])
         if (@input[2].upcase != 'SET')
             puts "Table name must be followed by SET"
+            return 0
         end
         if (@valid_student_columns.include? @input[3]) == true or (@valid_nba_columns.include? @input[3]) == true and @input[4] == '='
             validate_set(@input[1], @input[3], @input[5])
@@ -36,6 +33,7 @@ module Update_CLI
             @run_signal = true
         elsif (@input[6].upcase == 'WHERE' and @input[8] != '=')
             puts "SET criteria = value must be followed by WHERE criteria = value"
+            return 0
         end
         if @input[10]
             if (@input[9].upcase == 'WHERE' and @input[11] == '=')
@@ -44,6 +42,7 @@ module Update_CLI
                 @run_signal = true
             elsif (@input[9].upcase == 'WHERE' and @input[11] != '=')
                 puts "SET criteria = value must be followed by WHERE criteria = value"
+                return 0
             end
         end
     end

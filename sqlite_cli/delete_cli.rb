@@ -15,17 +15,21 @@ module Delete_CLI
     def validate_delete
         if (@input[1].upcase != 'FROM')
             puts "DELETE must be follwed by FROM"
+            return 0
         end
         validate_csv(@input[2])
         if (@input[3].upcase != 'WHERE')
             puts "Table Name must be followed by WHERE"
+            return 0
         end
         validate_where(@input[2], @input[4])
         if (@input[5] != '=')
             puts "WHERE reference must be followed by ="
+            return 0
         end
         if !@input[6]
             puts "WHERE = must be followed by criteria"
+            return 0
         else
             @where_criteria = @input[6]
             @run_signal = true

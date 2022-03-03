@@ -20,15 +20,25 @@ class MySqliteCli
         @insert_hash            = {}
         @insert_vals            = nil
         @insert_index           = 0
+        @select_cols            = nil
+        @update_values          = {}
         @where_col              = nil
         @where_col_2            = nil
         @where_criteria         = nil
         @where_criteria_2       = nil
-        @update_values          = {}
+        @order_criteria         = nil
+        @order_direction        = nil
+        @csv                    = nil
+        @csv_2                  = nil
+        @join_col_db_a          = nil
+        @join_col_db_b          = nil
         @request                = nil
         @input                  = nil
-        @csv                    = nil
         @run_signal             = nil
+        @result_array           = []
+        @count                  = 0
+        @index                  = 0
+        @join_flag              = 0
     end
 
     def reset
@@ -40,7 +50,6 @@ class MySqliteCli
         while buf = Readline.readline("my_sqlite_cli> ", true)
             @input = buf.split
             @request = MySqliteRequest.new
-            # request.restart
             if @input[0].upcase == "SELECT"
                 run_select_cli
             elsif @input[0].upcase == "INSERT"
@@ -67,24 +76,33 @@ class MySqliteCli
         data = data.gsub("'", "").gsub(",", "")
     end
 
-
-    def run_select_cli
-        index = 0
-        @input.collect! { |entry| entry = clean(entry) }
-        @input.each do |entry|
-            puts "#{index} - #{entry}"
-            index +=1
-        end
+    def validate_where_params(table, key, equal, criteria)
+            if table.downcase == 'students' and (@valid_student_columns.include? key) and equal == '='
+                check_criteria(key, criteria)
+            elsif table.downcase == 'players' and (@valid_nba_columns.include? key) and equal == '='
+                check_criteria(key, criteria)
+            end
     end
 
-
-
+    def check_criteria(key, criteria)
+        if !@where_col and !@where_criteria
+            @where_col = key
+            @where_criteria = clean(criteria)
+        elsif !@where_col_2 and !@where_criteria_2
+            @where_col_2 = key
+            @where_criteria_2 = clean(criteria)
+        else 
+            puts "WHERE must be follwed by reference and criteria"
+        end
+    end
 
     def validate_csv(input)
         if input.downcase == 'students' 
             @csv = './csv_files/students.csv'
         elsif input.downcase == 'players'
             @csv = './csv_files/nba_player_data.csv'
+        elsif input.downcase == 'others' and @csv
+            @csv_2 = './csv_files/others.csv'
         else
             puts "Invalid table reference, Please refer to README for valid choices"
         end
@@ -107,29 +125,3 @@ class MySqliteCli
     end
 
 end
-
-cli = MySqliteCli.new
-cli.scan_cli
-
-=begin
-
-    TEST CASES MySqliteCli CLASS
-
-    TEST CASE # 1 - DELETE FROM students WHERE name = 'John'
-        ^^ Success
-
-    TEST CASE # 2 - UPDATE students SET email = 'jane@janedoe.com', blog = 'https://blog.janedoe.com' WHERE name = 'Mila'
-        ^^ Success
-
-    TEst CASE # 3 - UPDATE students SET email = 'jane@Changedagain.com' WHERE name = 'Mila'
-        ^^ Success
-
-    TEST CASE # 4 - INSERT INTO students VALUES (John,john@johndoe.com,A,https://blog.johndoe.com)
-        ^^ Success
-    
-    TEST CASE # 5 - SELECT * FROM students
-
-
-    TEST CASE # 6 - SELECT name,email FROM students WHERE name = 'Mila'
-
-=end
